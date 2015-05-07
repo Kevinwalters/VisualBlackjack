@@ -14,7 +14,18 @@ CORNER_LEFT = 10
 CORNER_RIGHT = 70
 CORNER_TOP = 30
 CORNER_BOTTOM = 115
+STAND = 0
+HIT = 1
+OVER = 2
+RESULTS = [STAND, HIT, OVER]
 
+
+'''
+Given a card's contour, determines if it belongs to dealer based on position
+'''
+def isDealer(img, card_contour):
+    #see if above 1/2
+    pass
 
 '''
 Given a card's contour, determines its rank
@@ -25,9 +36,12 @@ Order of steps:
     4. Get the rank from the top-left corner of the card (to speed up template matching)
     5. Use the template matcher on the corner to determine the rank
 '''
-def getRank(img, card_contour):
+def getRank(orig_img, img, card_contour):
     # Get coordinates of the card in a known order
-    rect = cv2.minAreaRect(card_contour[0])
+    
+    # TODO MIN AREA RECT INCORRECT BECAUSE IMG IS STILL WARPED AT THIS POINT
+    
+    rect = cv2.minAreaRect(card_contour)
     box = cv2.cv.BoxPoints(rect)
     box = np.int0(box) # Box coordinates: [LR, LL, UL, UR]
     
@@ -41,17 +55,34 @@ def getRank(img, card_contour):
 
     # Perform template matching on the corner of the card
     card_corner = output[CORNER_TOP:CORNER_BOTTOM, CORNER_LEFT:CORNER_RIGHT]
+    
+    cv2.imshow('Output', card_corner)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+    
     tm = TemplateMatcher()
     card_val = tm.matchTemplate(card_corner)
     print Cards.CARDS[card_val]
+    return card_val, isDealer(orig_img,card_contour)
+
 
 if __name__ == '__main__':
     
-    img = cv2.imread("king-spades.png")
-
+    img = cv2.imread("jack-and-king.png")
+    
     imggray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     ret, b_img = cv2.threshold(imggray, 127, 255, 0)
     img2 = b_img.copy()
-    cnt, hier = cv2.findContours(b_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    
-    getRank(img2, cnt)
+    cnt, _ = cv2.findContours(b_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    print len(cnt)
+    hand = []
+    for j in range(len(cnt)):
+        new_img = img2.copy()
+        contour = cnt[j]
+        mask = np.zeros_like(new_img)
+        cv2.drawContours(mask, cnt, j, 255, -1)
+        out_img = np.zeros_like(new_img)
+        out_img[mask == 255] = new_img[mask == 255]
+        
+        card_val, isDealer = getRank(new_img, out_img, contour)
+        hand.append(card_val)

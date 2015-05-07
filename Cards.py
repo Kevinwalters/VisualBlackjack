@@ -4,7 +4,7 @@ Created on Apr 28, 2015
 @author: Kevin Walters
 '''
 
-class Cards(object):
+class Cards():
     ACE = 1
     TWO = 2
     THREE = 3
@@ -20,7 +20,8 @@ class Cards(object):
     KING = 13
     
     CARDS = ["Unknown", "Ace", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Jack", "Queen", "King"]
+    
+    CARD_VALUES = [None, 11, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]
 
     def __init__(self, params):
         pass
-        
