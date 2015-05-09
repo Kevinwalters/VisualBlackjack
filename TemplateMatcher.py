@@ -10,8 +10,8 @@ from Cards import Cards
 class TemplateMatcher():
     
     TEMPLATES = ["k_template.png",
-                "j_template.png"]
-                 #"q_template.png"]
+                "j_template.png",
+                "q_template.png"]
     
     def matchTemplate(self, card_img):
         min_template = None
