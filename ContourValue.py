@@ -14,7 +14,6 @@ from TemplateMatcher import TemplateMatcher
 import numpy as np
 from BlackjackLogic import BlackjackLogic
 from BlackjackLogic import RESULTS
-from twisted.python.reflect import isSame
 
 class ContourValue():
     
