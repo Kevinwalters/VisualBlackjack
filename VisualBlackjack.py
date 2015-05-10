@@ -156,8 +156,6 @@ def readImage(img):
         
         new_img = img2.copy()
         
-        print "cnt[j] %s" %cnt[j]
-        print "jjjjjj: %d" %j
         card_val = cv.getContourValue(img, cnt[j])
         if card_val > 10:
             card_val = getRank(new_img, cnt[j])

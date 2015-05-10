@@ -27,12 +27,11 @@ class ContourValue():
         green_boundary = ([0, 230, 0], [255, 255, 255])
         lower_boundary = np.array(green_boundary[0], dtype="uint8")
         upper_boundary = np.array(green_boundary[1], dtype="uint8")
-        print "upper %d" %upper_boundary[0]
-        print "lower %d" %lower_boundary[0]
+        
         # Apply a mask to the image, using the boundaries
         mask = cv2.inRange(img, lower_boundary, upper_boundary)
         img = cv2.bitwise_and(img, img, mask = mask)
-        cv2.imwrite('Orig2.png', img)
+        #cv2.imwrite('Orig2.png', img)
         
         # Get an image of only this card from this
         mask = np.zeros_like(img) # Create mask where white is what we want, black otherwise
@@ -46,14 +45,14 @@ class ContourValue():
         # Apply BW and threshold
         #image_HSV = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         #ret, image_thresh = cv2.threshold(image_HSV,100,255,cv2.THRESH_BINARY)
+         #cv2.imwrite('Thresh.png', card_img)
         image_canny = cv2.Canny(card_img,100,200) 
-        cv2.imwrite('Thresh.png', card_img)
         cv2.imwrite('Canny.png', image_canny)
         
         # Get contours
         contours = self.getContours(card_img)
         contour_img = cv2.drawContours(img, contours, 3, (0,255,0), 3)
-        cv2.imwrite('Contours.png', contour_img)
+        #cv2.imwrite('Contours.png', contour_img)
         
         # Get the moments
         moment_list = self.getMoments(contours)
@@ -76,15 +75,13 @@ class ContourValue():
         for i in range(0, len(contours)):
             M = cv2.moments(contours[i])
             #testing
-            ''''for a in M:
-                print "Moment: %d" %M[a] '''
             moment_list.append(M) #add the moment to the list
             #print("m10: %d and m00: %d" % (M['m10'], M['m00']))
             #print("m01: %d and m00: %d" % (M['m01'], M['m00']))
             if((M['m10'] !=0) and (M['m01'] !=0) and (M['m00'] !=0)):
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
-                print("x: %d and y: %d" % (cx, cy))
+                #print("x: %d and y: %d" % (cx, cy))
         return moment_list
     
     def getReducedMoments(self, moment_list):
