@@ -21,8 +21,7 @@ CORNER_LEFT = 10
 CORNER_RIGHT = 70
 CORNER_TOP = 25
 CORNER_BOTTOM = 115
-HEIGHT = 0
-WIDTH = 0
+STATES = ["WAIT_NO_MVMNT", "WAIT_MVMNT"]
 
 '''
 Given a card's contour, determines its rank
@@ -30,7 +29,7 @@ Order of steps:
     1. Color the entire contour area white
     2. Use this area to get a list of possible corners, using FAST
     3. Determine the actual card corners
-    4. Perform a persepctive transform, to get a top-down, 500x700 view of the card
+    4. Perform a perspective transform, to get a top-down, 500x700 view of the card
     5. Get the rank view from the top-left corner of the card (to speed up template matching)
     6. Use the template matcher on the corner to determine the rank 
 '''
@@ -74,9 +73,6 @@ def getRank(img, card_contour):
     if len(corners) != 4:
         return None, None
     corners = [c[0] for c in corners]
-    #output = cv2.drawKeypoints(white_card, kp, color=(0, 255, 0))
-    #cv2.imwrite("Output.png", output)
-    #corners = [c.pt for c in corners]
 
     # Order of points: [LR, LL, UL, UR]
     corners = sorted(corners, key=itemgetter(1)) # Sort on "highest" y value
@@ -100,33 +96,36 @@ def getRank(img, card_contour):
     # Transform the image into a 500x700 top-down view
     M = cv2.getPerspectiveTransform(src_points, target_points)
     output = cv2.warpPerspective(img, M, (500, 700))
-    #cv2.imwrite('Output.png', output)
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
+
     # Perform template matching on the corner of the card
     card_corner = output[CORNER_TOP:CORNER_BOTTOM, CORNER_LEFT:CORNER_RIGHT]
-    cv2.imshow('Output.png', card_corner)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    #cv2.imshow('Output.png', card_corner)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
     tm = TemplateMatcher()
     card_val = tm.matchTemplate(card_corner)
     print Cards.CARDS[card_val]
     # Determine if it the dealer's card, or your card
-    if cy < 0.4*HEIGHT:
+    if cy < 0.4*img.shape[0]:
         isDealer = True
     else:
         isDealer = False
     print isDealer
     return card_val, isDealer
 
+'''
+Computes the difference between three consecurite grayscale frames. 
+Helps to determine if a movement is occuring in the frame
+'''
+def frame_difference(frames):
+    diff1 = cv2.absdiff(frames[2], frames[1])
+    diff2 = cv2.absdiff(frames[1], frames[0])
+    return cv2.bitwise_and(diff1, diff2)
 
-if __name__ == '__main__':
-    
-    img = cv2.imread("3-cards-persp.jpg")
+def readImage(img):
     print img.shape
-    HEIGHT = img.shape[0]
-    WIDTH = img.shape[1]
-    
+    #HEIGHT = img.shape[0]
+    #WIDTH = img.shape[1]
     # A boundary for any non-green pixel
     green_boundary = ([0, 230, 0], [255, 255, 255])
     lower_boundary = np.array(green_boundary[0], dtype="uint8")
@@ -148,6 +147,10 @@ if __name__ == '__main__':
     img2 = b_img.copy()
     cnt, _ = cv2.findContours(b_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
+    if len(cnt) < 3:
+        print "There are not enough cards on the table."
+        print "The dealer should receive one card, and the user two"
+        return
     hand = []
     dealer = None
     for j in range(len(cnt)):
@@ -157,13 +160,69 @@ if __name__ == '__main__':
         new_img = img2.copy()
         card_val, isDealer = getRank(new_img, cnt[j])
         if not card_val and not isDealer:
-            print "Could not identify card corners. Unable to identify face card."
-            exit()       
+            print "Could not identify card corners. Unable to identify face card. Please make cards more visible."
+            return      
         if not isDealer:
             hand.append(card_val)
         else:
             dealer = card_val
+            
+    print_hand = [Cards.CARDS[c] for c in hand]
+    
+    if dealer == None:
+        print "Dealer does not have a card. Please place the dealer's card on the top part of the table."
+        return
+    print "Current hand:", print_hand
+    print "Dealer:", Cards.CARDS[dealer]
     
     blackjack = BlackjackLogic(hand, dealer)
     decision = blackjack.getDecision()
     print RESULTS[decision]
+
+if __name__ == '__main__':
+    state = 0
+    cap = cv2.VideoCapture(0)
+    if cap.isOpened():
+        ret, frame = cap.read()
+    else:
+        cap.open()
+        ret, frame = cap.read()
+    frame_buffer = []
+    movement_buffer = []
+    while ret:
+        # Keep track of last 3 grayscale frames seen
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        if len(frame_buffer) == 3:
+            frame_buffer.pop(0)
+        frame_buffer.append(gray)
+        if len(frame_buffer) < 3:
+            ret, frame = cap.read()
+            continue
+        # Determine if there has been significant movement based on the difference amongst the last 3 frames
+        diff = frame_difference(frame_buffer)
+        movement = False
+        for row in diff:
+            if max(row) > 40:
+                movement = True
+                break
+        # Keep track of if there were movements in the last 30 frames or not
+        if len(movement_buffer) == 30:
+            movement_buffer.pop(0)
+        movement_buffer.append(movement)
+        
+        # If waiting for no movement, and there has been no movement, read the image
+        if state == 0 and len(movement_buffer) == 30 and True not in movement_buffer:
+            state = 1
+            print "Deciding action..."
+            img = cv2.imread("3-turned.jpg")
+            readImage(img)
+            #cv2.imshow('frame', frame)
+        # If waiting for a movement (already read this hand), and there has been one, enter other state
+        elif state == 1 and True in movement_buffer:
+            print "Waiting for new hand..."
+            state = 0
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+        ret, frame = cap.read()
+    cap.release()
+    cv2.destroyAllWindows()
