@@ -14,6 +14,7 @@ from TemplateMatcher import TemplateMatcher
 import numpy as np
 from BlackjackLogic import BlackjackLogic
 from BlackjackLogic import RESULTS
+EXTRA_CNT = 4
 
 class ContourValue():
     
@@ -23,21 +24,36 @@ class ContourValue():
     def getContourValue(self, img, cnt):
         # Threshold the image to BW
         # A boundary for any non-green pixel
-        green_boundary = ([0, 230, 0], [255, 255, 255])
+        green_boundary = ([0, 210, 0], [255, 255, 255])
         lower_boundary = np.array(green_boundary[0], dtype="uint8")
         upper_boundary = np.array(green_boundary[1], dtype="uint8")
         # Apply a mask to the image, using the boundaries
         mask = cv2.inRange(img, lower_boundary, upper_boundary)
         img = cv2.bitwise_and(img, img, mask = mask)
+        #cv2.imwrite("Output.png", img)
+        #cv2.imshow("out", img)
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+        
+        imggray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        ret, card_img = cv2.threshold(imggray, 0, 255, 0)
         
         # Get an image of only this card from this
-        mask = np.zeros_like(img) # Create mask where white is what we want, black otherwise
+        mask = np.zeros_like(card_img) # Create mask where white is what we want, black otherwise
         cv2.drawContours(mask, [cnt], 0, 255, -1) # Draw filled contour in mask
-        card_img = np.zeros_like(img) # Extract out the object and place into output image
-        card_img[mask == 255] = img[mask == 255]
+        img = np.zeros_like(card_img) # Extract out the object and place into output image
+        img[mask == 255] = card_img[mask == 255]
         
-        imggray = cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY)
-        ret, card_img = cv2.threshold(imggray, 0, 255, 0)
+        kernel = np.ones((2,2), np.uint8)
+        img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+        img = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
+        img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+        
+        
+        cv2.imwrite("Output.png", img)
+        cv2.imshow("out", img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
         
         # Apply BW and threshold
         #image_HSV = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -46,8 +62,15 @@ class ContourValue():
         #cv2.imwrite('Edges.png', image_canny)
         
         # Get contours
-        contours = self.getContours(card_img)
+        contours = self.getContours(img)
         
+        print "Number:", len(contours)
+        
+        if len(contours) == 16:
+            return Cards.TEN
+        else:
+            return len(contours) - EXTRA_CNT
+                
         # Get the moments
         moment_list = self.getMoments(contours)
         
@@ -60,8 +83,16 @@ class ContourValue():
         return card_number
     
     def getContours(self, img):
-        cnt, _ = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-        return cnt
+        cnt, hier = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        print len(cnt)
+        cnts = []
+        #print cnt
+        for i in range(len(hier[0])):
+            #print hier[0][i]
+            print hier[0][i][3]
+            if hier[0][i][3] == 0:
+                cnts.append(cnt[i])
+        return cnts
     
     def getMoments(self, contours):
         moment_list = []
