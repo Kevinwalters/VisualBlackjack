@@ -15,6 +15,7 @@ from TemplateMatcher import TemplateMatcher
 import numpy as np
 from BlackjackLogic import BlackjackLogic
 from BlackjackLogic import RESULTS
+from ContourValue import ContourValue
 
 
 CORNER_LEFT = 10
@@ -146,14 +147,15 @@ def readImage(img):
         return
     hand = []
     dealer = None
+    cv = ContourValue()
     for j in range(len(cnt)):
-        print cv2.contourArea(cnt[j])
+        #print cv2.contourArea(cnt[j])
         if cv2.contourArea(cnt[j]) < 10000:
             continue
         
         new_img = img2.copy()
         
-        card_val = getRank(img, cnt[j])
+        card_val = cv.getContourValue(img, cnt[j])
         if card_val > 10:
             card_val = getRank(new_img, cnt[j])
         

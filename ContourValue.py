@@ -36,6 +36,9 @@ class ContourValue():
         card_img = np.zeros_like(img) # Extract out the object and place into output image
         card_img[mask == 255] = img[mask == 255]
         
+        imggray = cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY)
+        ret, card_img = cv2.threshold(imggray, 0, 255, 0)
+        
         # Apply BW and threshold
         #image_HSV = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         #ret, image_thresh = cv2.threshold(image_HSV,100,255,cv2.THRESH_BINARY)
@@ -67,7 +70,7 @@ class ContourValue():
             moment_list.append(M) #add the moment to the list
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
-            print("x: %d and y: %d" % (cx, cy))
+            #print("x: %d and y: %d" % (cx, cy))
         return moment_list
     
     def getReducedMoments(self, moment_list):
