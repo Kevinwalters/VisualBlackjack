@@ -218,8 +218,8 @@ if __name__ == '__main__':
         if state == 0 and len(movement_buffer) == 30 and True not in movement_buffer:
             state = 1
             print "Deciding action..."
-            img = cv2.imread("3-turned.jpg")
-            readImage(img)
+            #img = cv2.imread("full_img.jpg")
+            readImage(frame)
             #cv2.imshow('frame', frame)
         # If waiting for a movement (already read this hand), and there has been one, enter other state
         elif state == 1 and True in movement_buffer:
