@@ -105,13 +105,7 @@ def getRank(img, card_contour):
     tm = TemplateMatcher()
     card_val = tm.matchTemplate(card_corner)
     print Cards.CARDS[card_val]
-    # Determine if it the dealer's card, or your card
-    if cy < 0.4*img.shape[0]:
-        isDealer = True
-    else:
-        isDealer = False
-    print isDealer
-    return card_val, isDealer
+    return card_val
 
 '''
 Computes the difference between three consecurite grayscale frames. 
@@ -124,13 +118,12 @@ def frame_difference(frames):
 
 def readImage(img):
     print img.shape
-    #HEIGHT = img.shape[0]
-    #WIDTH = img.shape[1]
+
     # A boundary for any non-green pixel
     green_boundary = ([0, 230, 0], [255, 255, 255])
     lower_boundary = np.array(green_boundary[0], dtype="uint8")
     upper_boundary = np.array(green_boundary[1], dtype="uint8")
-    #apply a mask to the image, using the boundaries
+    # Apply a mask to the image, using the boundaries
     mask = cv2.inRange(img, lower_boundary, upper_boundary)
     no_green = cv2.bitwise_and(img, img, mask = mask)
     kernel = np.ones((4,4), np.uint8)
@@ -157,8 +150,19 @@ def readImage(img):
         print cv2.contourArea(cnt[j])
         if cv2.contourArea(cnt[j]) < 10000:
             continue
+        
         new_img = img2.copy()
-        card_val, isDealer = getRank(new_img, cnt[j])
+        
+        card_val = getRank(img, cnt[j])
+        if card_val > 10:
+            card_val = getRank(new_img, cnt[j])
+        
+        M = cv2.moments(cnt[j])
+        cy = int(M['m01']/M['m00'])
+        if cy < 0.4*img.shape[0]:
+            isDealer = True
+        else:
+            isDealer = False
         if not card_val and not isDealer:
             print "Could not identify card corners. Unable to identify face card. Please make cards more visible."
             return      
@@ -214,8 +218,8 @@ if __name__ == '__main__':
         if state == 0 and len(movement_buffer) == 30 and True not in movement_buffer:
             state = 1
             print "Deciding action..."
-            #img = cv2.imread("3-turned.jpg")
-            readImage(frame)
+            img = cv2.imread("3-turned.jpg")
+            readImage(img)
             #cv2.imshow('frame', frame)
         # If waiting for a movement (already read this hand), and there has been one, enter other state
         elif state == 1 and True in movement_buffer:

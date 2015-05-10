@@ -17,22 +17,36 @@ from BlackjackLogic import RESULTS
 
 class ContourValue():
     
-    def getContourValue(self):
-        # Read image
-        image = cv2.imread("playing_card_5.png")
-        #image = img
+    '''
+    Given the original image and a contour of a card, get its rank
+    '''
+    def getContourValue(self, img, cnt):
+        # Threshold the image to BW
+        # A boundary for any non-green pixel
+        green_boundary = ([0, 230, 0], [255, 255, 255])
+        lower_boundary = np.array(green_boundary[0], dtype="uint8")
+        upper_boundary = np.array(green_boundary[1], dtype="uint8")
+        # Apply a mask to the image, using the boundaries
+        mask = cv2.inRange(img, lower_boundary, upper_boundary)
+        img = cv2.bitwise_and(img, img, mask = mask)
+        
+        # Get an image of only this card from this
+        mask = np.zeros_like(img) # Create mask where white is what we want, black otherwise
+        cv2.drawContours(mask, [cnt], 0, 255, -1) # Draw filled contour in mask
+        card_img = np.zeros_like(img) # Extract out the object and place into output image
+        card_img[mask == 255] = img[mask == 255]
         
         # Apply BW and threshold
-        image_HSV = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        ret, image_thresh = cv2.threshold(image_HSV,100,255,cv2.THRESH_BINARY)
-        image_canny = cv2.Canny(image,100,200) 
-        cv2.imwrite('Edges.png', image_canny)
+        #image_HSV = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        #ret, image_thresh = cv2.threshold(image_HSV,100,255,cv2.THRESH_BINARY)
+        #image_canny = cv2.Canny(img,100,200) 
+        #cv2.imwrite('Edges.png', image_canny)
         
         # Get contours
-        contours =  self.getContours(image, image_thresh)
+        contours = self.getContours(card_img)
         
         # Get the moments
-        moment_list = self.getMoments(contours, image)
+        moment_list = self.getMoments(contours)
         
         # Reduce the moments
         moment_count = self.getReducedMoments(moment_list)
@@ -42,21 +56,11 @@ class ContourValue():
         print "card_number %d" %card_number
         return card_number
     
-    def getContours(self, image, image_thresh):
-        cnt, _ = cv2.findContours(image_thresh, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-        contours = cnt # Contour pairs
-        #print " contours: %s" % cnt[1] #first contour pair
-        #print " contours: %s" % cnt[0][1][0] #second contour pair
-       
-        # Create a copy of the image
-        image_copy = image.copy()
-        
-        #Draw the contours on the image
-        cv2.drawContours(image_copy, contours, 0, 255, -1)
-        cv2.imwrite('Contours.png', image_copy)
-        return contours
+    def getContours(self, img):
+        cnt, _ = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        return cnt
     
-    def getMoments(self, contours, image):
+    def getMoments(self, contours):
         moment_list = []
         for i in range(0, len(contours)):
             M = cv2.moments(contours[i])
