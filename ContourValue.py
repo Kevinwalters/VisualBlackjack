@@ -23,23 +23,29 @@ class ContourValue():
         cv2.imwrite('Orig.png', img)
         # Threshold the image to BW
         # A boundary for any non-green pixel
-        green_boundary = ([0, 230, 0], [255, 255, 255])
+        green_boundary = ([0, 210, 0], [255, 255, 255])
         lower_boundary = np.array(green_boundary[0], dtype="uint8")
         upper_boundary = np.array(green_boundary[1], dtype="uint8")
         
         # Apply a mask to the image, using the boundaries
         mask = cv2.inRange(img, lower_boundary, upper_boundary)
         img = cv2.bitwise_and(img, img, mask = mask)
-        #cv2.imwrite('Orig2.png', img)
         
         # Get an image of only this card from this
-        mask = np.zeros_like(img) # Create mask where white is what we want, black otherwise
-        cv2.drawContours(mask, [cnt], 0, 255, -1) # Draw filled contour in mask
-        card_img = np.zeros_like(img) # Extract out the object and place into output image
+        mask = np.zeros_like(img)
+        cv2.drawContours(mask, [cnt], 0, 255, -1)
+        card_img = np.zeros_like(img)
         card_img[mask == 255] = img[mask == 255]
         
         imggray = cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY)
         ret, card_img = cv2.threshold(imggray, 0, 255, 0)
+        
+        # Clean up anything extra in the card
+        kernel = np.ones((2,2), np.uint8)
+        card_img = cv2.morphologyEx(card_img, cv2.MORPH_CLOSE, kernel)
+        card_img = cv2.morphologyEx(card_img, cv2.MORPH_OPEN, kernel)
+        card_img = cv2.morphologyEx(card_img, cv2.MORPH_CLOSE, kernel)
+        cv2.imwrite("Output.png", card_img)
         
         # Apply BW and threshold
         #image_HSV = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -58,7 +64,6 @@ class ContourValue():
         
         # Reduce the moments
         moment_count = self.getReducedMoments(moment_list)
-        print "moment_count: %d" %moment_count
         
         # Get the final card number value
         card_number = self.getCardNumber(moment_count)
@@ -75,8 +80,7 @@ class ContourValue():
             M = cv2.moments(contours[i])
             #testing
             moment_list.append(M) #add the moment to the list
-            #print("m10: %d and m00: %d" % (M['m10'], M['m00']))
-            #print("m01: %d and m00: %d" % (M['m01'], M['m00']))
+
             if((M['m10'] !=0) and (M['m01'] !=0) and (M['m00'] !=0)):
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
@@ -111,7 +115,6 @@ class ContourValue():
                                 numFound +=1
                                 if(numFound > maxSame):
                                     maxSame = numFound
-                                print("cx: %d and dx: %d -- cy: %d and dy: %d found: %d" % (cx, dx, cy, dy, numFound))
             
         # Check for extra contours
         extra_moments = (maxSame -1) *2
@@ -141,7 +144,7 @@ class ContourValue():
     def getCardNumber(self, moment_count): 
         extra_contours = 5
         if(moment_count>16):
-            extra_contours = 7
+            extra_contours = 9 # Two for each 0 (inside and outside)
         card_number = moment_count - extra_contours
         return card_number
         

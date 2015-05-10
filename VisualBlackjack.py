@@ -105,9 +105,7 @@ def getRank(img, card_contour):
     # Perform template matching on the corner of the card
     card_corner = output[CORNER_TOP:CORNER_BOTTOM, CORNER_LEFT:CORNER_RIGHT]
     card_suit = output[SUIT_TOP:SUIT_BOTTOM, SUIT_LEFT:SUIT_RIGHT]
-    cv2.imshow('Output.png', card_suit)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+
     tm = TemplateMatcher()
     card_val = tm.matchTemplate(card_corner)
     #card_suit = tm.matchSuitTemplate(card_suit)
@@ -198,8 +196,6 @@ def readImage(img):
     print RESULTS[decision]
 
 if __name__ == '__main__':
-    img = cv2.imread('white_cards_10.png')
-    readImage(img)
     state = 0
     cap = cv2.VideoCapture(0)
     if cap.isOpened():
@@ -236,7 +232,7 @@ if __name__ == '__main__':
             state = 1
             print "Deciding action..."
             img = cv2.imread("full_img.jpg")
-            readImage(frame)
+            readImage(img)
             #cv2.imshow('frame', frame)
         # If waiting for a movement (already read this hand), and there has been one, enter other state
         elif state == 1 and True in movement_buffer:
