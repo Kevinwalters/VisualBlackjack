@@ -187,7 +187,7 @@ def readImage(img):
     print RESULTS[decision]
 
 if __name__ == '__main__':
-    img = cv2.imread('white_cards.png')
+    img = cv2.imread('white_cards_10.png')
     readImage(img)
     state = 0
     cap = cv2.VideoCapture(0)
