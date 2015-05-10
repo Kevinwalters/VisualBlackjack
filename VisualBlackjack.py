@@ -145,6 +145,7 @@ def readImage(img):
 
     img2 = b_img.copy()
     cnt, _ = cv2.findContours(b_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    print "len: %d" %len(cnt)
     
     if len(cnt) < 3:
         print "There are not enough cards on the table."
@@ -197,6 +198,8 @@ def readImage(img):
     print RESULTS[decision]
 
 if __name__ == '__main__':
+    img = cv2.imread('white_cards_10.png')
+    readImage(img)
     state = 0
     cap = cv2.VideoCapture(0)
     if cap.isOpened():
