@@ -19,55 +19,37 @@ class ContourValue():
     '''
     Given the original image and a contour of a card, get its rank
     '''
-    def getContourValue(self, img, cnt):
+    def getContourValue(self, img, cnt, b_thresh):
         cv2.imwrite('Orig.png', img)
-        # Threshold the image to BW
-        # A boundary for any non-green pixel
-        green_boundary = ([0, 110, 0], [255, 255, 255])
-        lower_boundary = np.array(green_boundary[0], dtype="uint8")
-        upper_boundary = np.array(green_boundary[1], dtype="uint8")
-        
-        # Apply a mask to the image, using the boundaries
-        mask = cv2.inRange(img, lower_boundary, upper_boundary)
-        img = cv2.bitwise_and(img, img, mask = mask)
-        
-        # Get an image of only this card from this
+        # Black out everything except the card we're dealing with
         mask = np.zeros_like(img)
-        cv2.drawContours(mask, [cnt], 0, 255, -1)
+        cv2.drawContours(mask, [cnt], 0, (255, 255, 255), -1)
         card_img = np.zeros_like(img)
-        card_img[mask == 255] = img[mask == 255]
+        card_img[mask == (255, 255, 255)] = img[mask == (255, 255, 255)]
         
         cv2.imwrite("Output.png", card_img)
         
+        # Binarize the image
         imggray = cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY)
-        ret, card_img = cv2.threshold(imggray, 0, 255, 0)
         
-        #cv2.imwrite("Output.png", card_img)
+        #print b_thresh
+        ret, card_img = cv2.threshold(imggray, b_thresh, 255, 0)
         
-        
-        # Clean up anything extra in the card
         kernel = np.ones((2,2), np.uint8)
-        card_img = cv2.morphologyEx(card_img, cv2.MORPH_OPEN, kernel)
-        #card_img = cv2.morphologyEx(card_img, cv2.MORPH_OPEN, kernel)
-        #card_img = cv2.morphologyEx(card_img, cv2.MORPH_CLOSE, kernel)
-        #cv2.imwrite("Output.png", card_img)
-        
-        # Apply BW and threshold
-        #image_HSV = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        #ret, image_thresh = cv2.threshold(image_HSV,100,255,cv2.THRESH_BINARY)
-        #cv2.imwrite('Thresh.png', card_img)
-         
-        cv2.imwrite("contour_out.png", card_img)
-        cv2.imshow("Out", card_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        image_canny = cv2.Canny(card_img,100,200) 
-        cv2.imwrite('Canny.png', image_canny)
+        card_img = cv2.erode(card_img, kernel, iterations=1)
+        card_img = cv2.dilate(card_img, kernel, iterations=1)
+        #if b_thresh == 195:
+        #    cv2.imshow('b_out', card_img)
+        #    cv2.imwrite("b_out.png", card_img)
+        #    cv2.waitKey(0)
+        #    cv2.destroyAllWindows()
+
+        #image_canny = cv2.Canny(card_img,100,200) 
+        #cv2.imwrite('Canny.png', image_canny)
         
         # Get contours
         contours = self.getContours(card_img)
-        contour_img = cv2.drawContours(img, contours, 3, (0,255,0), 3)
-        #cv2.imwrite('Contours.png', contour_img)
+        #contour_img = cv2.drawContours(img, contours, 3, (0,255,0), 3)
         
         # Get the moments
         moment_list = self.getMoments(contours)
@@ -77,7 +59,6 @@ class ContourValue():
         
         # Get the final card number value
         card_number = self.getCardNumber(moment_count)
-        print "card_number %d" %card_number
         return card_number
     
     def getContours(self, img):
@@ -153,8 +134,10 @@ class ContourValue():
       
     def getCardNumber(self, moment_count): 
         extra_contours = 5
-        if(moment_count>16):
-            extra_contours = 9 # Two for each 0 (inside and outside)
+        if moment_count == 19:
+            extra_contours = 9
+        elif moment_count > 15:
+            return moment_count
         card_number = moment_count - extra_contours
         return card_number
         

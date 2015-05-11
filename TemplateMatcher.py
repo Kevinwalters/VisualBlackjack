@@ -23,10 +23,8 @@ class TemplateMatcher():
         min_score = float("inf")
         # Iterate through templates, find the best match (lowest score for TM_SQDIFF)
         for template in self.TEMPLATES:
-            print card_img.shape
             tmp = cv2.imread(template)
             tmp = cv2.cvtColor(tmp, cv2.COLOR_BGR2GRAY) # Convert to a single channel
-            print tmp.shape
             result = cv2.matchTemplate(tmp, card_img, cv2.TM_SQDIFF)
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)            
             if min_val <= min_score:

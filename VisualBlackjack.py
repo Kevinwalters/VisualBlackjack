@@ -16,6 +16,7 @@ import numpy as np
 from BlackjackLogic import BlackjackLogic
 from BlackjackLogic import RESULTS
 from ContourValue import ContourValue
+from argparse import ArgumentParser
 
 
 CORNER_LEFT = 0
@@ -38,10 +39,18 @@ Order of steps:
     4. Get the rank view from the top-left corner of the card (to speed up template matching)
     5. Use the template matcher on the corner to determine the rank 
 '''
-def getRank(img, card_contour):
+def getRank(img, card_contour, b_thresh):
     # Color the contour area white
-    white_card = np.zeros(img.shape[:2], np.uint8)
-    cv2.drawContours(white_card, [card_contour], 0, 255, -1)
+    mask = np.zeros_like(img)
+    cv2.drawContours(mask, [card_contour], 0, (255, 255, 255), -1)
+    card_img = np.zeros_like(img)
+    card_img[mask == (255, 255, 255)] = img[mask == (255, 255, 255)]
+    
+    cv2.imwrite("Output.png", card_img)
+    
+    # Binarize the image
+    imggray = cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY)
+    ret, img = cv2.threshold(imggray, b_thresh, 255, 0)
     dists = []
     
     # Get the centroid of the contour
@@ -105,20 +114,12 @@ def getRank(img, card_contour):
     # Perform template matching on the corner of the card
     card_corner = output[CORNER_TOP:CORNER_BOTTOM, CORNER_LEFT:CORNER_RIGHT]
     
-    cv2.imshow("CORNER", card_corner)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    
     card_suit = output[SUIT_TOP:SUIT_BOTTOM, SUIT_LEFT:SUIT_RIGHT]
-    
-    cv2.imshow("suit", card_suit)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
 
     tm = TemplateMatcher()
     card_val = tm.matchTemplate(card_corner)
+    #print Cards.CARDS[card_val]
     #card_suit = tm.matchSuitTemplate(card_suit)
-    print Cards.CARDS[card_val]
     return card_val#, card_suit
 
 '''
@@ -130,17 +131,17 @@ def frame_difference(frames):
     diff2 = cv2.absdiff(frames[1], frames[0])
     return cv2.bitwise_and(diff1, diff2)
 
-def readImage(img, thresh_value):
+def readImage(img, green_thresh, b_thresh, calibrate=0):
     # A boundary for any non-green pixel
-    #green_boundary = ([0, 210, 0], [255, 255, 255])
-    green_boundary = thresh_value
+    green_boundary = ([0, green_thresh, 0], [255, 255, 255])
+    #green_boundary = thresh_value
     lower_boundary = np.array(green_boundary[0], dtype="uint8")
     upper_boundary = np.array(green_boundary[1], dtype="uint8")
     # Apply a mask to the image, using the boundaries
     mask = cv2.inRange(img, lower_boundary, upper_boundary)
     no_green = cv2.bitwise_and(img, img, mask = mask)
     
-    kernel = np.ones((2,2), np.uint8)
+    kernel = np.ones((1,1), np.uint8)
     no_green = cv2.morphologyEx(no_green, cv2.MORPH_CLOSE, kernel)
     no_green = cv2.morphologyEx(no_green, cv2.MORPH_OPEN, kernel)
     no_green = cv2.morphologyEx(no_green, cv2.MORPH_CLOSE, kernel)
@@ -151,28 +152,29 @@ def readImage(img, thresh_value):
     
     cv2.imwrite("Output.png", b_img)
 
-    img2 = b_img.copy()
     cnt, _ = cv2.findContours(b_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    print "len: %d" %len(cnt)
-    print "thresh_value: %d" %thresh_value[0][1] 
+    #print "len: %d" %len(cnt)
+    #print "thresh_value: %d" %thresh_value[0][1] 
     
-    #if len(cnt) < 3:
-    #    print "There are not enough cards on the table."
-    #    print "The dealer should receive one card, and the user two"
-    #    return
+    if calibrate == 1:
+        return len(cnt)
+    
+    if len(cnt) < 3 and calibrate == 0:
+        print "There are not enough cards on the table."
+        print "The dealer should receive one card, and the user two"
+        return
     hand = []
     dealer = None
     cv = ContourValue()
     for j in range(len(cnt)):
-        #print cv2.contourArea(cnt[j])
         if cv2.contourArea(cnt[j]) < 10000:
             continue
-        
-        new_img = img2.copy()
-        print "about to get contour" #testing 
-        card_val = cv.getContourValue(img, cnt[j])
+
+        card_val = cv.getContourValue(img, cnt[j], b_thresh)
+        #print card_val
         if card_val > 10:
-            card_val = getRank(new_img, cnt[j])
+            print card_val
+            card_val = getRank(img, cnt[j], b_thresh)
             
         
         # TODO card_suit in above
@@ -196,22 +198,21 @@ def readImage(img, thresh_value):
             
     print_hand = [Cards.CARDS[c] for c in hand]
     
-    if dealer == None:
+    if dealer == None and calibrate == 0:
         print "Dealer does not have a card. Please place the dealer's card on the top part of the table."
         return
-    print "Current hand:", print_hand
-    print "Dealer:", Cards.CARDS[dealer]
-    
-    blackjack = BlackjackLogic(hand, dealer)
-    decision = blackjack.getDecision()
-    print RESULTS[decision]
+    if calibrate == 0:
+        print "Current hand:", print_hand
+        print "Dealer:", Cards.CARDS[dealer]
+        
+        blackjack = BlackjackLogic(hand, dealer)
+        decision = blackjack.getDecision()
+        print RESULTS[decision]
     return card_val
 
 def getThreshold():
-        # Initialize green boundary
-        thresh_value = ([0, 175, 0], [255, 255, 255])
-        
         # Open the webcam and read an image
+        print "Calibrating thresholds..."
         cap = cv2.VideoCapture(0)
         if cap.isOpened():
             ret, frame = cap.read()
@@ -220,51 +221,119 @@ def getThreshold():
             ret, frame = cap.read()
         frame_buffer = []
         movement_buffer = []
-        while (ret<4):
-            cv2.imshow("out", frame) #testing 
+        while ret:
+            #cv2.imshow("out", frame)
             # Keep track of last 3 grayscale frames seen
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            #cv2.imshow('GRAY.png',gray) #testing 
             if len(frame_buffer) == 3:
-                print "We have 3"
                 frame_buffer.pop(0)
-                break
             frame_buffer.append(gray)
             if len(frame_buffer) < 3:
                 ret, frame = cap.read()
                 continue
+            # Determine if there has been significant movement based on the difference amongst the last 3 frames
+            diff = frame_difference(frame_buffer)
+            movement = False
+            for row in diff:
+                if max(row) > 40:
+                    movement = True
+                    break
+            # Keep track of if there were movements in the last 30 frames or not
+            if len(movement_buffer) == 30:
+                movement_buffer.pop(0)
+            movement_buffer.append(movement)
+            
+            if True not in movement_buffer and len(movement_buffer) == 30:
+                break
+            
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+            ret, frame = cap.read()
         
-        # Get number of card value of that image
-        print "about to read image"
-        card_val= readImage(frame, thresh_value)
-        #print "card_val: %d" %card_val
+        #frame = cv2.imread("Webcam.png")
+        
+        # Increase the contrast slightly to help with differentiating (lights lighter, darks darker)
+        for i in range(len(frame)):
+            for j in range(len(frame[i])):
+                for k in range(len(frame[i][j])):
+                    val = frame[i][j][k]
+                    if val > 127:
+                        frame[i][j][k] = min(val + 2, 255)
+                    else:
+                        frame[i][j][k] = max(val - 2, 0)
+        
+        # First, get threshold for green background
+        green_thresh = 100
+        valid_green = []
+        while green_thresh < 255:
+            ret_val = readImage(frame, green_thresh, 255, calibrate=1)
+            if ret_val != 1:
+                green_thresh += 5
+            else:
+                valid_green.append(green_thresh)
+                green_thresh += 5
+        if len(valid_green) == 0:
+            print "Cannot identify card outlines. Please find better lighting."
+            return None, None
+        print "Green:", valid_green
+        
+        # If green threshold is set, find black/white threshold
+        g_thresh = None
+        for green_thresh in valid_green:
+            found = False
+            b_thresh = 0
+            while b_thresh < 255:
+                card_val = readImage(frame, green_thresh, b_thresh, calibrate=2)
+                if card_val != CARD_VALUE:
+                    b_thresh += 5
+                else:
+                    found = True
+                    g_thresh = green_thresh
+                    break
+            if found:
+                break
+        if not found:
+            print "Could identify cards, but not card contents. Please find better lighting."
+            return g_thresh, None
+        print "Black threshold:", b_thresh
+        return g_thresh, b_thresh
+ 
+        
+        '''
+        card_val= readImage(frame, thresh_value, True)
+        print "card_val: %d" %card_val
+        if card_val == CARD_VALUE:
+            return thresh_value
         
         # Continuously compare to CARD_VALUE
         # If we still haven't gotten 10 or our green is above 230, don't keep going
         print "comparing"
         keep_going = True
         while(keep_going): 
-            #print "keep going"
             if(card_val != CARD_VALUE):
                 if(thresh_value[0][1] > 230):
                     #print "card_val: %d" %card_val
                     keep_going = False
                 else: 
-                    new_thresh = thresh_value[0][1] + 10
+                    new_thresh = thresh_value[0][1] + 5
                     thresh_value[0][1] = new_thresh
-                    card_val= readImage(frame, thresh_value)
+                    card_val= readImage(frame, thresh_value, True)
             else:
                 keep_going = False
         print "done with getThresh"
         return thresh_value
+        '''
+    
+        
         
 
 if __name__ == '__main__':
     state = 0
     
-    # Get the correct threshold
-    print "Getting thresh"
-    thresh_value = getThreshold()
+    # Get the correct thresholds (one for green background, one for card contents)
+    green_thresh, b_thresh = getThreshold()
+    if not green_thresh or not b_thresh:
+        exit()
     
     #Start
     cap = cv2.VideoCapture(0)
@@ -302,7 +371,7 @@ if __name__ == '__main__':
             state = 1
             print "Deciding action..."
             img = cv2.imread("full_img.jpg")
-            readImage(img, thresh_value)
+            readImage(frame, green_thresh, b_thresh)
             #cv2.imshow('frame', frame)
         # If waiting for a movement (already read this hand), and there has been one, enter other state
         elif state == 1 and True in movement_buffer:
