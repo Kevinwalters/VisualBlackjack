@@ -16,6 +16,7 @@ import numpy as np
 from BlackjackLogic import BlackjackLogic
 from BlackjackLogic import RESULTS
 from ContourValue import ContourValue
+from GetThreshold import GetThreshold
 
 
 CORNER_LEFT = 10
@@ -121,11 +122,10 @@ def frame_difference(frames):
     diff2 = cv2.absdiff(frames[1], frames[0])
     return cv2.bitwise_and(diff1, diff2)
 
-def readImage(img):
-    print img.shape
-
+def readImage(img, thresh_value):
     # A boundary for any non-green pixel
-    green_boundary = ([0, 210, 0], [255, 255, 255])
+    #green_boundary = ([0, 210, 0], [255, 255, 255])
+    green_boundary = thresh_value
     lower_boundary = np.array(green_boundary[0], dtype="uint8")
     upper_boundary = np.array(green_boundary[1], dtype="uint8")
     # Apply a mask to the image, using the boundaries
@@ -194,9 +194,13 @@ def readImage(img):
     blackjack = BlackjackLogic(hand, dealer)
     decision = blackjack.getDecision()
     print RESULTS[decision]
+    return card_val
 
 if __name__ == '__main__':
     state = 0
+    # Get the correct threshold
+    gt = GetThreshold()
+    thresh_value = gt.getThreshold()
     cap = cv2.VideoCapture(0)
     if cap.isOpened():
         ret, frame = cap.read()
@@ -232,7 +236,7 @@ if __name__ == '__main__':
             state = 1
             print "Deciding action..."
             img = cv2.imread("full_img.jpg")
-            readImage(img)
+            readImage(img, thresh_value)
             #cv2.imshow('frame', frame)
         # If waiting for a movement (already read this hand), and there has been one, enter other state
         elif state == 1 and True in movement_buffer:
