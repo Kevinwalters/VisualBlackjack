@@ -27,6 +27,7 @@ SUIT_BOTTOM = 170
 SUIT_LEFT = 0
 SUIT_RIGHT = 70
 STATES = ["WAIT_NO_MVMNT", "WAIT_MVMNT"]
+CARD_VALUE = 10
 
 '''
 Given a card's contour, determines its rank
@@ -129,11 +130,10 @@ def frame_difference(frames):
     diff2 = cv2.absdiff(frames[1], frames[0])
     return cv2.bitwise_and(diff1, diff2)
 
-def readImage(img):
-    print img.shape
-
+def readImage(img, thresh_value):
     # A boundary for any non-green pixel
-    green_boundary = ([0, 110, 0], [255, 255, 255])
+    #green_boundary = ([0, 210, 0], [255, 255, 255])
+    green_boundary = thresh_value
     lower_boundary = np.array(green_boundary[0], dtype="uint8")
     upper_boundary = np.array(green_boundary[1], dtype="uint8")
     # Apply a mask to the image, using the boundaries
@@ -154,6 +154,7 @@ def readImage(img):
     img2 = b_img.copy()
     cnt, _ = cv2.findContours(b_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     print "len: %d" %len(cnt)
+    print "thresh_value: %d" %thresh_value[0][1] 
     
     #if len(cnt) < 3:
     #    print "There are not enough cards on the table."
@@ -168,7 +169,7 @@ def readImage(img):
             continue
         
         new_img = img2.copy()
-        
+        print "about to get contour" #testing 
         card_val = cv.getContourValue(img, cnt[j])
         if card_val > 10:
             card_val = getRank(new_img, cnt[j])
@@ -204,9 +205,68 @@ def readImage(img):
     blackjack = BlackjackLogic(hand, dealer)
     decision = blackjack.getDecision()
     print RESULTS[decision]
+    return card_val
+
+def getThreshold():
+        # Initialize green boundary
+        thresh_value = ([0, 175, 0], [255, 255, 255])
+        
+        # Open the webcam and read an image
+        cap = cv2.VideoCapture(0)
+        if cap.isOpened():
+            ret, frame = cap.read()
+        else:
+            cap.open()
+            ret, frame = cap.read()
+        frame_buffer = []
+        movement_buffer = []
+        while (ret<4):
+            cv2.imshow("out", frame) #testing 
+            # Keep track of last 3 grayscale frames seen
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            #cv2.imshow('GRAY.png',gray) #testing 
+            if len(frame_buffer) == 3:
+                print "We have 3"
+                frame_buffer.pop(0)
+                break
+            frame_buffer.append(gray)
+            if len(frame_buffer) < 3:
+                ret, frame = cap.read()
+                continue
+        
+        # Get number of card value of that image
+        print "about to read image"
+        card_val= readImage(frame, thresh_value)
+        #print "card_val: %d" %card_val
+        
+        # Continuously compare to CARD_VALUE
+        # If we still haven't gotten 10 or our green is above 230, don't keep going
+        print "comparing"
+        keep_going = True
+        while(keep_going): 
+            #print "keep going"
+            if(card_val != CARD_VALUE):
+                if(thresh_value[0][1] > 230):
+                    #print "card_val: %d" %card_val
+                    keep_going = False
+                else: 
+                    new_thresh = thresh_value[0][1] + 10
+                    thresh_value[0][1] = new_thresh
+                    card_val= readImage(frame, thresh_value)
+            else:
+                keep_going = False
+        print "done with getThresh"
+        return thresh_value
+        
 
 if __name__ == '__main__':
     state = 0
+    
+    # Get the correct threshold
+    print "Getting thresh"
+    thresh_value = getThreshold()
+    
+    #Start
     cap = cv2.VideoCapture(0)
     if cap.isOpened():
         ret, frame = cap.read()
@@ -241,8 +301,8 @@ if __name__ == '__main__':
         if state == 0 and len(movement_buffer) == 30 and True not in movement_buffer:
             state = 1
             print "Deciding action..."
-            img = cv2.imread("queen-hearts.jpg")
-            readImage(img)
+            img = cv2.imread("full_img.jpg")
+            readImage(img, thresh_value)
             #cv2.imshow('frame', frame)
         # If waiting for a movement (already read this hand), and there has been one, enter other state
         elif state == 1 and True in movement_buffer:
