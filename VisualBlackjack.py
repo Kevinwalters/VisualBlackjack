@@ -18,9 +18,9 @@ from BlackjackLogic import RESULTS
 from ContourValue import ContourValue
 
 
-CORNER_LEFT = 10
-CORNER_RIGHT = 70
-CORNER_TOP = 25
+CORNER_LEFT = 0
+CORNER_RIGHT = 75
+CORNER_TOP = 5
 CORNER_BOTTOM = 115
 SUIT_TOP = 100
 SUIT_BOTTOM = 170
@@ -32,11 +32,10 @@ STATES = ["WAIT_NO_MVMNT", "WAIT_MVMNT"]
 Given a card's contour, determines its rank
 Order of steps:
     1. Color the entire contour area white
-    2. Use this area to get a list of possible corners, using FAST
-    3. Determine the actual card corners
-    4. Perform a perspective transform, to get a top-down, 500x700 view of the card
-    5. Get the rank view from the top-left corner of the card (to speed up template matching)
-    6. Use the template matcher on the corner to determine the rank 
+    2. Determine the card corners from the contours
+    3. Perform a perspective transform, to get a top-down, 500x700 view of the card
+    4. Get the rank view from the top-left corner of the card (to speed up template matching)
+    5. Use the template matcher on the corner to determine the rank 
 '''
 def getRank(img, card_contour):
     # Color the contour area white
@@ -104,7 +103,16 @@ def getRank(img, card_contour):
 
     # Perform template matching on the corner of the card
     card_corner = output[CORNER_TOP:CORNER_BOTTOM, CORNER_LEFT:CORNER_RIGHT]
+    
+    cv2.imshow("CORNER", card_corner)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
     card_suit = output[SUIT_TOP:SUIT_BOTTOM, SUIT_LEFT:SUIT_RIGHT]
+    
+    cv2.imshow("suit", card_suit)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     tm = TemplateMatcher()
     card_val = tm.matchTemplate(card_corner)
@@ -125,7 +133,7 @@ def readImage(img):
     print img.shape
 
     # A boundary for any non-green pixel
-    green_boundary = ([0, 210, 0], [255, 255, 255])
+    green_boundary = ([0, 110, 0], [255, 255, 255])
     lower_boundary = np.array(green_boundary[0], dtype="uint8")
     upper_boundary = np.array(green_boundary[1], dtype="uint8")
     # Apply a mask to the image, using the boundaries
@@ -140,15 +148,17 @@ def readImage(img):
 
     imggray = cv2.cvtColor(to_binary, cv2.COLOR_BGR2GRAY)
     ret, b_img = cv2.threshold(imggray, 0, 255, 0)
+    
+    cv2.imwrite("Output.png", b_img)
 
     img2 = b_img.copy()
     cnt, _ = cv2.findContours(b_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     print "len: %d" %len(cnt)
     
-    if len(cnt) < 3:
-        print "There are not enough cards on the table."
-        print "The dealer should receive one card, and the user two"
-        return
+    #if len(cnt) < 3:
+    #    print "There are not enough cards on the table."
+    #    print "The dealer should receive one card, and the user two"
+    #    return
     hand = []
     dealer = None
     cv = ContourValue()
@@ -231,7 +241,7 @@ if __name__ == '__main__':
         if state == 0 and len(movement_buffer) == 30 and True not in movement_buffer:
             state = 1
             print "Deciding action..."
-            img = cv2.imread("full_img.jpg")
+            img = cv2.imread("queen-hearts.jpg")
             readImage(img)
             #cv2.imshow('frame', frame)
         # If waiting for a movement (already read this hand), and there has been one, enter other state

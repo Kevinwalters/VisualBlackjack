@@ -23,7 +23,7 @@ class ContourValue():
         cv2.imwrite('Orig.png', img)
         # Threshold the image to BW
         # A boundary for any non-green pixel
-        green_boundary = ([0, 210, 0], [255, 255, 255])
+        green_boundary = ([0, 110, 0], [255, 255, 255])
         lower_boundary = np.array(green_boundary[0], dtype="uint8")
         upper_boundary = np.array(green_boundary[1], dtype="uint8")
         
@@ -37,20 +37,30 @@ class ContourValue():
         card_img = np.zeros_like(img)
         card_img[mask == 255] = img[mask == 255]
         
+        cv2.imwrite("Output.png", card_img)
+        
         imggray = cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY)
         ret, card_img = cv2.threshold(imggray, 0, 255, 0)
         
+        #cv2.imwrite("Output.png", card_img)
+        
+        
         # Clean up anything extra in the card
         kernel = np.ones((2,2), np.uint8)
-        card_img = cv2.morphologyEx(card_img, cv2.MORPH_CLOSE, kernel)
         card_img = cv2.morphologyEx(card_img, cv2.MORPH_OPEN, kernel)
-        card_img = cv2.morphologyEx(card_img, cv2.MORPH_CLOSE, kernel)
-        cv2.imwrite("Output.png", card_img)
+        #card_img = cv2.morphologyEx(card_img, cv2.MORPH_OPEN, kernel)
+        #card_img = cv2.morphologyEx(card_img, cv2.MORPH_CLOSE, kernel)
+        #cv2.imwrite("Output.png", card_img)
         
         # Apply BW and threshold
         #image_HSV = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         #ret, image_thresh = cv2.threshold(image_HSV,100,255,cv2.THRESH_BINARY)
-         #cv2.imwrite('Thresh.png', card_img)
+        #cv2.imwrite('Thresh.png', card_img)
+         
+        cv2.imwrite("contour_out.png", card_img)
+        cv2.imshow("Out", card_img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
         image_canny = cv2.Canny(card_img,100,200) 
         cv2.imwrite('Canny.png', image_canny)
         
