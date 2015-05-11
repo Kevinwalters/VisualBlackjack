@@ -34,6 +34,7 @@ class ContourValue():
         
         #print b_thresh
         ret, card_img = cv2.threshold(imggray, b_thresh, 255, 0)
+        cv2.imwrite("Threshold_C.png", card_img)
         
         kernel = np.ones((2,2), np.uint8)
         card_img = cv2.erode(card_img, kernel, iterations=1)
@@ -44,8 +45,8 @@ class ContourValue():
         #    cv2.waitKey(0)
         #    cv2.destroyAllWindows()
 
-        #image_canny = cv2.Canny(card_img,100,200) 
-        #cv2.imwrite('Canny.png', image_canny)
+        image_canny = cv2.Canny(card_img,100,200) 
+        cv2.imwrite('Canny.png', image_canny)
         
         # Get contours
         contours = self.getContours(card_img)
