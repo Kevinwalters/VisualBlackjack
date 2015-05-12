@@ -20,21 +20,13 @@ class ContourValue():
     Given the original image and a contour of a card, get its rank
     '''
     def getContourValue(self, img, cnt, b_thresh):
-        cv2.imwrite('Orig.png', img)
         # Black out everything except the card we're dealing with
         mask = np.zeros_like(img)
         cv2.drawContours(mask, [cnt], 0, (255, 255, 255), -1)
         card_img = np.zeros_like(img)
         card_img[mask == (255, 255, 255)] = img[mask == (255, 255, 255)]
-        
-        cv2.imwrite("Output.png", card_img)
-        
-        #cv2.imshow("before_gray", card_img)
-        #cv2.waitKey(0)
-        #cv2.destroyAllWindows()
-        
+
         red_boundary = ([170, 0, 0], [255, 255, 255])
-        #green_boundary = thresh_value
         lower_boundary = np.array(red_boundary[0], dtype="uint8")
         upper_boundary = np.array(red_boundary[1], dtype="uint8")
         # Apply a mask to the image, using the boundaries
@@ -44,29 +36,7 @@ class ContourValue():
         # Binarize the image
         imggray = cv2.cvtColor(no_red, cv2.COLOR_BGR2GRAY)
         
-        #print b_thresh
         ret, card_img = cv2.threshold(imggray, b_thresh, 255, 0)
-        cv2.imwrite("Threshold_C.png", card_img)
-        
-        #print b_thresh
-        #cv2.imshow("gray", imggray)
-        ##cv2.waitKey(0)
-        #cv2.destroyAllWindows()
-
-        
-        #kernel = np.ones((1,1), np.uint8)
-        #card_img = cv2.erode(card_img, kernel, iterations=1)
-        #card_img = cv2.dilate(card_img, kernel, iterations=4)
-        #card_img = cv2.morphologyEx(card_img, cv2.MORPH_CLOSE, kernel)
-        #card_img = cv2.erode(card_img, kernel, iterations=1)
-        #if b_thresh == 195:
-        #    cv2.imshow('b_out', card_img)
-        #    cv2.imwrite("b_out.png", card_img)
-        #    cv2.waitKey(0)
-        #    cv2.destroyAllWindows()
-        
-        
-        
         
         cnt, hier = cv2.findContours(card_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         if len(cnt) > 30:
@@ -80,122 +50,6 @@ class ContourValue():
             return 10
         else:
             return cnt_count - 4
-            
-        
-        
-
-        image_canny = cv2.Canny(card_img,100,200) 
-        cv2.imwrite('Canny.png', image_canny)
-        
-        # Get contours
-        cnt_img = card_img.copy()
-        contours = self.getContours(card_img)
-
-        #for contour in contours:
-            #print contour
-        #    cv2.drawContours(img, [contour], 0, (0,255,0), 1)
-        
-        #    cv2.imshow("contour", img)
-        #    cv2.waitKey(0)
-        #    cv2.destroyAllWindows()
-        
-        
-        # Get the moments
-        moment_list = self.getMoments(contours)
-        
-        print len(moment_list)
-        # Reduce the moments
-        moment_count = self.getReducedMoments(moment_list)
-        print moment_count
-        #print "moments: %d" %moment_count
-        
-        # Get the final card number value
-        card_number = self.getCardNumber(moment_count)
-        print "card_number: %d" %card_number
-        return card_number
-    
-    def getContours(self, img):
-        cnt, _ = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-        return cnt
-    
-    def getMoments(self, contours):
-        moment_list = []
-        for i in range(0, len(contours)):
-            M = cv2.moments(contours[i])
-            #testing
-            moment_list.append(M) #add the moment to the list
-
-            if((M['m10'] !=0) and (M['m01'] !=0) and (M['m00'] !=0)):
-                cx = int(M['m10']/M['m00'])
-                cy = int(M['m01']/M['m00'])
-                #print("x: %d and y: %d" % (cx, cy))
-        return moment_list
-    
-    def getReducedMoments(self, moment_list):
-        moment_count = 0
-        max_x = 0
-        max_y = 0
-        numFound = 0
-        maxSame = 0
-         
-        for i in range(0, len(moment_list)):
-            numFound = 0
-            M = moment_list[i]
-            if((M['m10'] !=0) and (M['m01'] !=0) and (M['m00'] !=0)):
-                moment_count +=1
-                print "moment_count: %d" %moment_count               
-                cx = int(M['m10']/M['m00'])
-                cy = int(M['m01']/M['m00'])
-                if(cx>max_x):
-                    max_x = cx
-                if(cy>max_y):
-                    max_y = cy
-                for j in range(0, len(moment_list)):
-                    M2 = moment_list[j]
-                    if((M2['m10'] !=0) and (M2['m01'] !=0) and (M2['m00'] !=0)): 
-                        dx = int(M2['m10']/M2['m00'])
-                        dy = int(M2['m01']/M2['m00'])
-                        if(i != j):
-                            if(self.isSameX(cx, dx) and self.isSameY(cy, dy, max_y)):
-                                numFound +=1
-                                if(numFound > maxSame):
-                                    maxSame = numFound
-            
-        # Check for extra contours
-        extra_moments = (maxSame -1) *2
-        print "extra: %d" %extra_moments
-        if(extra_moments != 0):
-            moment_count = moment_count - extra_moments
-        return moment_count
-             
-         
-    def  isSameX(self, x1, x2):
-        isSame = False
-        pixelDiff = 6
-        if(x1>=(x2-pixelDiff) and x1<=(x2+pixelDiff)):
-            isSame = True
-        if(x2>=(x1-pixelDiff) and x2<=(x1+pixelDiff)):
-            isSame = True 
-        return isSame
-    
-    def  isSameY(self, y1, y2, max_y):
-        isSame = False
-        maxDiff = max_y * 0.12; #diff of 12%
-        if(y1>=(y2-maxDiff) and y1<=(y2+maxDiff)):
-            isSame = True
-        if(y2>=(y1-maxDiff) and y2<=(y1+maxDiff)):
-            isSame = True 
-        return isSame
-      
-    def getCardNumber(self, moment_count): 
-        extra_contours = 5
-        
-        if moment_count > 15 and moment_count < 21:
-            return 10
-        elif moment_count > 24:
-            return moment_count
-        card_number = moment_count - extra_contours
-        return card_number
         
     def __init__(self):
         return None

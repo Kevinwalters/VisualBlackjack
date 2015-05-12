@@ -22,10 +22,6 @@ class TemplateMatcher():
         min_template = None
         min_score = float("inf")
 
-
-        cv2.imshow("corner", card_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
         # Iterate through templates, find the best match (lowest score for TM_SQDIFF)
         for template in self.TEMPLATES:
             tmp = cv2.imread(template)
