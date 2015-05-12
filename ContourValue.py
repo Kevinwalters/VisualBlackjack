@@ -33,21 +33,26 @@ class ContourValue():
         #cv2.waitKey(0)
         #cv2.destroyAllWindows()
         
+        red_boundary = ([170, 0, 0], [255, 255, 255])
+        #green_boundary = thresh_value
+        lower_boundary = np.array(red_boundary[0], dtype="uint8")
+        upper_boundary = np.array(red_boundary[1], dtype="uint8")
+        # Apply a mask to the image, using the boundaries
+        mask = cv2.inRange(card_img, lower_boundary, upper_boundary)
+        no_red = cv2.bitwise_and(card_img, card_img, mask = mask)
+        
         # Binarize the image
-        imggray = cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY)
+        imggray = cv2.cvtColor(no_red, cv2.COLOR_BGR2GRAY)
         
         #print b_thresh
         ret, card_img = cv2.threshold(imggray, b_thresh, 255, 0)
         cv2.imwrite("Threshold_C.png", card_img)
         
-        print b_thresh
+        #print b_thresh
         #cv2.imshow("gray", imggray)
         ##cv2.waitKey(0)
         #cv2.destroyAllWindows()
-        
-        cv2.imshow("black", card_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+
         
         #kernel = np.ones((1,1), np.uint8)
         #card_img = cv2.erode(card_img, kernel, iterations=1)
@@ -59,6 +64,25 @@ class ContourValue():
         #    cv2.imwrite("b_out.png", card_img)
         #    cv2.waitKey(0)
         #    cv2.destroyAllWindows()
+        
+        
+        
+        
+        cnt, hier = cv2.findContours(card_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        if len(cnt) > 30:
+            return len(cnt)
+        cnt_count = 0
+        for element in hier[0]:
+            if element[3] == 0:
+                cnt_count += 1
+                
+        if cnt_count == 16:
+            return 10
+        else:
+            return cnt_count - 4
+            
+        
+        
 
         image_canny = cv2.Canny(card_img,100,200) 
         cv2.imwrite('Canny.png', image_canny)
@@ -66,27 +90,24 @@ class ContourValue():
         # Get contours
         cnt_img = card_img.copy()
         contours = self.getContours(card_img)
-        
-        print len(contours)
-        card = card_img.copy()
-        #cv2.imshow("contour", card)
-        #cv2.waitKey(0)
-        #cv2.destroyAllWindows()
-        for contour in contours:
+
+        #for contour in contours:
             #print contour
-            cv2.drawContours(img, [contour], 0, (0,255,0), 1)
+        #    cv2.drawContours(img, [contour], 0, (0,255,0), 1)
         
-            #cv2.imshow("contour", img)
-            #cv2.waitKey(0)
-            #cv2.destroyAllWindows()
+        #    cv2.imshow("contour", img)
+        #    cv2.waitKey(0)
+        #    cv2.destroyAllWindows()
         
         
         # Get the moments
         moment_list = self.getMoments(contours)
         
+        print len(moment_list)
         # Reduce the moments
         moment_count = self.getReducedMoments(moment_list)
-        print "moments: %d" %moment_count
+        print moment_count
+        #print "moments: %d" %moment_count
         
         # Get the final card number value
         card_number = self.getCardNumber(moment_count)
@@ -122,6 +143,7 @@ class ContourValue():
             M = moment_list[i]
             if((M['m10'] !=0) and (M['m01'] !=0) and (M['m00'] !=0)):
                 moment_count +=1
+                print "moment_count: %d" %moment_count               
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
                 if(cx>max_x):
@@ -141,7 +163,8 @@ class ContourValue():
             
         # Check for extra contours
         extra_moments = (maxSame -1) *2
-        if(extra_moments != 1):
+        print "extra: %d" %extra_moments
+        if(extra_moments != 0):
             moment_count = moment_count - extra_moments
         return moment_count
              

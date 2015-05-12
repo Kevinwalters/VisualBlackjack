@@ -19,9 +19,9 @@ from ContourValue import ContourValue
 from argparse import ArgumentParser
 
 CORNER_LEFT = 0
-CORNER_RIGHT = 75
-CORNER_TOP = 5
-CORNER_BOTTOM = 115
+CORNER_RIGHT = 70
+CORNER_TOP = 15
+CORNER_BOTTOM = 100
 SUIT_TOP = 100
 SUIT_BOTTOM = 170
 SUIT_LEFT = 0
@@ -40,6 +40,7 @@ Order of steps:
 '''
 def getRank(img, card_contour, b_thresh):
     # Color the contour area white
+
     mask = np.zeros_like(img)
     cv2.drawContours(mask, [card_contour], 0, (255, 255, 255), -1)
     card_img = np.zeros_like(img)
@@ -47,9 +48,14 @@ def getRank(img, card_contour, b_thresh):
     
     cv2.imwrite("Output.png", card_img)
     
+    
+    cv2.imshow("out", card_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
     # Binarize the image
-    imggray = cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY)
-    ret, img = cv2.threshold(imggray, b_thresh, 255, 0)
+    #imggray = cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY)
+    #ret, img = cv2.threshold(imggray, b_thresh, 255, 0)
     dists = []
     
     # Get the centroid of the contour
@@ -108,10 +114,25 @@ def getRank(img, card_contour, b_thresh):
     
     # Transform the image into a 500x700 top-down view
     M = cv2.getPerspectiveTransform(src_points, target_points)
-    output = cv2.warpPerspective(img, M, (500, 700))
+    output = cv2.warpPerspective(card_img, M, (500, 700))
+    
+    cv2.imshow("out", output)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     # Perform template matching on the corner of the card
     card_corner = output[CORNER_TOP:CORNER_BOTTOM, CORNER_LEFT:CORNER_RIGHT]
+
+    red_boundary = ([170, 0, 0], [255, 255, 255])
+
+    lower_boundary = np.array(red_boundary[0], dtype="uint8")
+    upper_boundary = np.array(red_boundary[1], dtype="uint8")
+    # Apply a mask to the image, using the boundaries
+    mask = cv2.inRange(card_corner, lower_boundary, upper_boundary)
+    no_red = cv2.bitwise_and(card_corner, card_corner, mask = mask)
+
+    imggray = cv2.cvtColor(no_red, cv2.COLOR_BGR2GRAY)
+    ret, card_corner = cv2.threshold(imggray, b_thresh, 255, 0)  
     
     card_suit = output[SUIT_TOP:SUIT_BOTTOM, SUIT_LEFT:SUIT_RIGHT]
 
@@ -158,17 +179,19 @@ def readImage(img, green_thresh, b_thresh, calibrate=0):
     if calibrate == 1:
         return len(cnt)
     
-    if len(cnt) < 3 and calibrate == 0:
+    '''if len(cnt) < 3 and calibrate == 0:
         print "There are not enough cards on the table."
         print "The dealer should receive one card, and the user two"
-        return
+        return'''
     hand = []
     dealer = None
     cv = ContourValue()
+    if calibrate != 0 and len(cnt) != 1:
+        print "Please use only one card, a ten, to calibrate the system"
+        exit()
+    card_val = None
     for j in range(len(cnt)):
         if cv2.contourArea(cnt[j]) < 1000: #10k to 1k
-            #what happens here??
-            #print "contourArea is less than 10k: %d" %cv2.contourArea(cnt[j])
             continue
 
         card_val = cv.getContourValue(img, cnt[j], b_thresh)
@@ -277,7 +300,7 @@ def getThreshold():
         g_thresh = None
         for green_thresh in valid_green:
             found = False
-            b_thresh = 115
+            b_thresh = 125
             while b_thresh < 255:
                 card_val = readImage(frame, green_thresh, b_thresh, calibrate=2)
                 #print "card_val: %d" %card_val 
