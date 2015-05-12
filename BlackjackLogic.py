@@ -30,8 +30,11 @@ class BlackjackLogic(object):
                 return HIT
             if self.card_sum == 7 and self.dealer_card in [Cards.NINE, Cards.TEN, Cards.JACK, Cards.QUEEN, Cards.KING]:
                 return HIT
-            if self.card_sum > 7:
+            if self.card_sum > 7 and self.card_sum < 11:
                 return STAND
+            self.card_sum = self.card_sum + 1
+            self.num_ace = 0
+            return self.getDecision()
         # More than once Ace, need to first check if in a good position
         # If not, simulate a one-ace scenario recursively
         if self.num_ace > 1:
