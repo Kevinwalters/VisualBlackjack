@@ -29,15 +29,30 @@ class ContourValue():
         
         cv2.imwrite("Output.png", card_img)
         
+        #cv2.imshow("before_gray", card_img)
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+        
         # Binarize the image
         imggray = cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY)
         
         #print b_thresh
         ret, card_img = cv2.threshold(imggray, b_thresh, 255, 0)
         
-        kernel = np.ones((2,2), np.uint8)
-        card_img = cv2.erode(card_img, kernel, iterations=1)
-        card_img = cv2.dilate(card_img, kernel, iterations=1)
+        print b_thresh
+        #cv2.imshow("gray", imggray)
+        ##cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+        
+        cv2.imshow("black", card_img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        
+        #kernel = np.ones((1,1), np.uint8)
+        #card_img = cv2.erode(card_img, kernel, iterations=1)
+        #card_img = cv2.dilate(card_img, kernel, iterations=4)
+        #card_img = cv2.morphologyEx(card_img, cv2.MORPH_CLOSE, kernel)
+        #card_img = cv2.erode(card_img, kernel, iterations=1)
         #if b_thresh == 195:
         #    cv2.imshow('b_out', card_img)
         #    cv2.imwrite("b_out.png", card_img)
@@ -48,17 +63,33 @@ class ContourValue():
         #cv2.imwrite('Canny.png', image_canny)
         
         # Get contours
+        cnt_img = card_img.copy()
         contours = self.getContours(card_img)
-        #contour_img = cv2.drawContours(img, contours, 3, (0,255,0), 3)
+        
+        print len(contours)
+        card = card_img.copy()
+        #cv2.imshow("contour", card)
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+        for contour in contours:
+            #print contour
+            cv2.drawContours(img, [contour], 0, (0,255,0), 1)
+        
+            #cv2.imshow("contour", img)
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
+        
         
         # Get the moments
         moment_list = self.getMoments(contours)
         
         # Reduce the moments
         moment_count = self.getReducedMoments(moment_list)
+        print "moments: %d" %moment_count
         
         # Get the final card number value
         card_number = self.getCardNumber(moment_count)
+        print "card_number: %d" %card_number
         return card_number
     
     def getContours(self, img):
@@ -134,9 +165,10 @@ class ContourValue():
       
     def getCardNumber(self, moment_count): 
         extra_contours = 5
-        if moment_count == 19:
-            extra_contours = 9
-        elif moment_count > 15:
+        
+        if moment_count > 16 and moment_count < 21:
+            return 10
+        elif moment_count > 24:
             return moment_count
         card_number = moment_count - extra_contours
         return card_number

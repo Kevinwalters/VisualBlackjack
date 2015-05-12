@@ -18,7 +18,6 @@ from BlackjackLogic import RESULTS
 from ContourValue import ContourValue
 from argparse import ArgumentParser
 
-
 CORNER_LEFT = 0
 CORNER_RIGHT = 75
 CORNER_TOP = 5
@@ -220,9 +219,10 @@ def getThreshold():
             cap.open()
             ret, frame = cap.read()
         frame_buffer = []
+        print frame.shape
         movement_buffer = []
         while ret:
-            #cv2.imshow("out", frame)
+            cv2.imshow("out", frame)
             # Keep track of last 3 grayscale frames seen
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             if len(frame_buffer) == 3:
@@ -251,7 +251,7 @@ def getThreshold():
             ret, frame = cap.read()
         
         #frame = cv2.imread("Webcam.png")
-        
+        '''
         # Increase the contrast slightly to help with differentiating (lights lighter, darks darker)
         for i in range(len(frame)):
             for j in range(len(frame[i])):
@@ -261,9 +261,9 @@ def getThreshold():
                         frame[i][j][k] = min(val + 2, 255)
                     else:
                         frame[i][j][k] = max(val - 2, 0)
-        
+        '''
         # First, get threshold for green background
-        green_thresh = 100
+        green_thresh = 175
         valid_green = []
         while green_thresh < 255:
             ret_val = readImage(frame, green_thresh, 255, calibrate=1)
@@ -277,11 +277,15 @@ def getThreshold():
             return None, None
         print "Green:", valid_green
         
+        
+        
+        #TODO use middle valid_green value?
+        
         # If green threshold is set, find black/white threshold
         g_thresh = None
         for green_thresh in valid_green:
             found = False
-            b_thresh = 0
+            b_thresh = 130
             while b_thresh < 255:
                 card_val = readImage(frame, green_thresh, b_thresh, calibrate=2)
                 if card_val != CARD_VALUE:
@@ -371,6 +375,8 @@ if __name__ == '__main__':
             state = 1
             print "Deciding action..."
             img = cv2.imread("full_img.jpg")
+
+            
             readImage(frame, green_thresh, b_thresh)
             #cv2.imshow('frame', frame)
         # If waiting for a movement (already read this hand), and there has been one, enter other state
