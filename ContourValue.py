@@ -167,7 +167,7 @@ class ContourValue():
     def getCardNumber(self, moment_count): 
         extra_contours = 5
         
-        if moment_count > 16 and moment_count < 21:
+        if moment_count > 15 and moment_count < 21:
             return 10
         elif moment_count > 24:
             return moment_count

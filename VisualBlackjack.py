@@ -277,7 +277,7 @@ def getThreshold():
         g_thresh = None
         for green_thresh in valid_green:
             found = False
-            b_thresh = 130
+            b_thresh = 115
             while b_thresh < 255:
                 card_val = readImage(frame, green_thresh, b_thresh, calibrate=2)
                 #print "card_val: %d" %card_val 
