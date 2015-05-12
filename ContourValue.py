@@ -38,6 +38,7 @@ class ContourValue():
         
         #print b_thresh
         ret, card_img = cv2.threshold(imggray, b_thresh, 255, 0)
+        cv2.imwrite("Threshold_C.png", card_img)
         
         print b_thresh
         #cv2.imshow("gray", imggray)
@@ -59,8 +60,8 @@ class ContourValue():
         #    cv2.waitKey(0)
         #    cv2.destroyAllWindows()
 
-        #image_canny = cv2.Canny(card_img,100,200) 
-        #cv2.imwrite('Canny.png', image_canny)
+        image_canny = cv2.Canny(card_img,100,200) 
+        cv2.imwrite('Canny.png', image_canny)
         
         # Get contours
         cnt_img = card_img.copy()

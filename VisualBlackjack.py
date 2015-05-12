@@ -166,20 +166,20 @@ def readImage(img, green_thresh, b_thresh, calibrate=0):
     dealer = None
     cv = ContourValue()
     for j in range(len(cnt)):
-        if cv2.contourArea(cnt[j]) < 10000:
+        if cv2.contourArea(cnt[j]) < 1000: #10k to 1k
+            #what happens here??
+            #print "contourArea is less than 10k: %d" %cv2.contourArea(cnt[j])
             continue
 
         card_val = cv.getContourValue(img, cnt[j], b_thresh)
         #print card_val
         if card_val > 10:
-            print card_val
+            #print "Card value: %d" %card_val
             card_val = getRank(img, cnt[j], b_thresh)
             
         
         # TODO card_suit in above
         # TODO get card_suit if <= 10 also
-        
-        
         
         M = cv2.moments(cnt[j])
         cy = int(M['m01']/M['m00'])
@@ -221,6 +221,7 @@ def getThreshold():
         frame_buffer = []
         print frame.shape
         movement_buffer = []
+        #cv2.flip(frame,1) #Flip the frame
         while ret:
             cv2.imshow("out", frame)
             # Keep track of last 3 grayscale frames seen
@@ -235,7 +236,7 @@ def getThreshold():
             diff = frame_difference(frame_buffer)
             movement = False
             for row in diff:
-                if max(row) > 40:
+                if max(row) > 45:
                     movement = True
                     break
             # Keep track of if there were movements in the last 30 frames or not
@@ -249,24 +250,15 @@ def getThreshold():
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
             ret, frame = cap.read()
-        
-        #frame = cv2.imread("Webcam.png")
-        '''
-        # Increase the contrast slightly to help with differentiating (lights lighter, darks darker)
-        for i in range(len(frame)):
-            for j in range(len(frame[i])):
-                for k in range(len(frame[i][j])):
-                    val = frame[i][j][k]
-                    if val > 127:
-                        frame[i][j][k] = min(val + 2, 255)
-                    else:
-                        frame[i][j][k] = max(val - 2, 0)
-        '''
-        # First, get threshold for green background
+
+
         green_thresh = 175
         valid_green = []
         while green_thresh < 255:
             ret_val = readImage(frame, green_thresh, 255, calibrate=1)
+            #filename = str(green_thresh) + ".png"
+            #cv2.imwrite(filename, frame)
+            #print "ret_val: %d" %ret_val 
             if ret_val != 1:
                 green_thresh += 5
             else:
@@ -288,10 +280,12 @@ def getThreshold():
             b_thresh = 130
             while b_thresh < 255:
                 card_val = readImage(frame, green_thresh, b_thresh, calibrate=2)
+                #print "card_val: %d" %card_val 
                 if card_val != CARD_VALUE:
                     b_thresh += 5
                 else:
                     found = True
+                    print "Found"
                     g_thresh = green_thresh
                     break
             if found:
@@ -301,35 +295,6 @@ def getThreshold():
             return g_thresh, None
         print "Black threshold:", b_thresh
         return g_thresh, b_thresh
- 
-        
-        '''
-        card_val= readImage(frame, thresh_value, True)
-        print "card_val: %d" %card_val
-        if card_val == CARD_VALUE:
-            return thresh_value
-        
-        # Continuously compare to CARD_VALUE
-        # If we still haven't gotten 10 or our green is above 230, don't keep going
-        print "comparing"
-        keep_going = True
-        while(keep_going): 
-            if(card_val != CARD_VALUE):
-                if(thresh_value[0][1] > 230):
-                    #print "card_val: %d" %card_val
-                    keep_going = False
-                else: 
-                    new_thresh = thresh_value[0][1] + 5
-                    thresh_value[0][1] = new_thresh
-                    card_val= readImage(frame, thresh_value, True)
-            else:
-                keep_going = False
-        print "done with getThresh"
-        return thresh_value
-        '''
-    
-        
-        
 
 if __name__ == '__main__':
     state = 0
@@ -338,6 +303,7 @@ if __name__ == '__main__':
     green_thresh, b_thresh = getThreshold()
     if not green_thresh or not b_thresh:
         exit()
+    print "Starting"
     
     #Start
     cap = cv2.VideoCapture(0)
@@ -348,6 +314,7 @@ if __name__ == '__main__':
         ret, frame = cap.read()
     frame_buffer = []
     movement_buffer = []
+    cv2.flip(frame, 1)
     while ret:
         cv2.imshow("out", frame)
         # Keep track of last 3 grayscale frames seen
@@ -362,7 +329,7 @@ if __name__ == '__main__':
         diff = frame_difference(frame_buffer)
         movement = False
         for row in diff:
-            if max(row) > 40:
+            if max(row) > 45:
                 movement = True
                 break
         # Keep track of if there were movements in the last 30 frames or not
